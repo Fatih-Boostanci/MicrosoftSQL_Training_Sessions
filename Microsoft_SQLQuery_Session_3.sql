@@ -107,3 +107,40 @@ SELECT
         DATEPART(WEEKDAY, A_DATE) WKD,
         DATENAME (MONTH, A_DATE) MNT
 FROM t_date_time
+
+
+--STRING FUNCTIONS
+
+--LEN, CHARINDEX, PATINDEX
+
+SELECT LEN ('CHAR')
+
+SELECT CHARINDEX ( 'R', 'CHARACTER', 5)
+--5. karakterden itibaren say 'R' karakterinin indexi
+
+--R ile biten stringler (PATINDEX(Pattern Index))
+
+SELECT PATINDEX ('%r', 'CHAR')
+
+SELECT PATINDEX ('%A____', 'CHARACTER')
+
+---
+
+--LEFT, RIGHT, SUBSTRING
+
+SELECT LEFT ('CHARACTER', 3)
+
+SELECT RIGHT ('CHARACTER', 4)
+
+SELECT SUBSTRING ('CHARACTER', 4, 3)  --4'ten başla, 3 karakter al
+
+
+--STRING_SPLIT
+
+SELECT value as NAME
+FROM STRING_SPLIT ('victor,saint,brian,heagle,habip', ',')
+
+
+---Write a script that makes upper first letter of 'character'
+
+SELECT UPPER(SUBSTRING('character', 1, 1)) + RIGHT ('character', 8) 
