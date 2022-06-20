@@ -86,7 +86,7 @@ WHERE order_date BETWEEN '2020-01-19' AND '2020-01-25'
 ORDER BY order_id;
 
 --
-SELECT [sunday], [Monday], [Tuesday], [Wednesday], [Thursday], [Friday], [saturday]
+SELECT *--[sunday], [Monday], [Tuesday], [Wednesday], [Thursday], [Friday], [saturday]
 FROM 
 (
 SELECT order_id, DATENAME(weekday, order_date) w_day
