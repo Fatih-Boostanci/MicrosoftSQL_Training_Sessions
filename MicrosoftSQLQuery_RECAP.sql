@@ -177,6 +177,420 @@ GROUP BY
         (pb.brand_name),
         (pb.brand_name, pc.category_name),
         (pb.brand_name, pc.category_name, pp.model_year)
-      
-    ) 
+        ) 
+ORDER BY 1 
+
+--ROLLUP 
+
+SELECT pb.brand_name, pc.category_name, pp.model_year, 
+        ROUND(SUM((soi.list_price*soi.quantity)*(1-soi.discount)), 2) as total_sales_price
+FROM product.product pp, product.brand pb, product.category pc, sale.order_item soi 
+WHERE pp.brand_id = pb.brand_id
+    AND pp.category_id = pc.category_id 
+    AND pp.product_id = soi.product_id 
+GROUP BY 
+    ROLLUP 
+            (pb.brand_name, pc.category_name, pp.model_year)
+         
+ORDER BY 1 
+
+----
+--CUBE 
+
+SELECT pb.brand_name, pc.category_name, pp.model_year, 
+        ROUND(SUM((soi.list_price*soi.quantity)*(1-soi.discount)), 2) as total_sales_price
+FROM product.product pp, product.brand pb, product.category pc, sale.order_item soi 
+WHERE pp.brand_id = pb.brand_id
+    AND pp.category_id = pc.category_id 
+    AND pp.product_id = soi.product_id 
+GROUP BY 
+    CUBE 
+            (pb.brand_name, pc.category_name, pp.model_year)
+        
+--ORDER BY 1  
+
+--- 
+
+--PIVOT 
+SELECT pc.category_name, SUM((soi.list_price*soi.quantity)*(1-soi.discount)) as total_sales
+FROM product.category pc, product.product pp, sale.order_item soi 
+WHERE pp.category_id =  pc.category_id 
+    AND pp.product_id = soi.product_id
+GROUP BY pc.category_name
+ORDER BY 1 
+
+SELECT *
+FROM (
+            SELECT pc.category_name, SUM((soi.list_price*soi.quantity)*(1-soi.discount)) as total_sales
+            FROM product.category pc, product.product pp, sale.order_item soi 
+            WHERE pp.category_id =  pc.category_id 
+                AND pp.product_id = soi.product_id
+            GROUP BY pc.category_name 
+       ) AS Source_table
+
+PIVOT (
+    SUM((soi.list_price*soi.quantity)*(1-soi.discount))
+    FOR category_name
+    IN ([Audio & Video Accessories], [Bluetooth], [Car Electronics], 
+        [Computer Accessories], [Earbud], [gps], [Hi-Fi Systems], [Home Theater], [mp4 player], 
+        [Receivers Amplifiers], [Speakers], [Televisions & Accessories])
+) AS pivot_table; 
+
+
+
+
+-----
+
+--SET OPERATORS 
+
+--UNION 
+
+--
+SELECT last_name, city
+FROM sale.customer 
+WHERE city = 'Aurora'
+UNION 
+SELECT last_name, city
+FROM sale.customer 
+WHERE city = 'Charlotte'
+
+
+SELECT customer_id, first_name, last_name
+FROM sale.customer 
+WHERE first_name = 'Thomas'
+UNION 
+SELECT customer_id, first_name, last_name
+FROM sale.customer 
+WHERE last_name = 'Thomas'
 ORDER BY 1
+;
+
+--INTERSECT 
+--
+SELECT pb.brand_id, pb.brand_name
+FROM product.product pp, product.brand pb 
+WHERE pp.brand_id = pb.brand_id 
+    AND pp.model_year = 2018 
+INTERSECT
+SELECT pb.brand_id, pb.brand_name
+FROM product.product pp, product.brand pb 
+WHERE pp.brand_id = pb.brand_id 
+    AND pp.model_year = 2019 
+--ORDER BY 1 
+
+--EXCEPT 
+SELECT pp.product_id, pp.product_name
+FROM product.product pp, sale.order_item soi, sale.orders so 
+WHERE pp.product_id = soi.product_id 
+    AND soi.order_id = so.order_id 
+    AND YEAR(so.order_date) = 2019 
+EXCEPT 
+SELECT pp.product_id, pp.product_name
+FROM product.product pp, sale.order_item soi, sale.orders so 
+WHERE pp.product_id = soi.product_id 
+    AND soi.order_id = so.order_id 
+    AND YEAR(so.order_date) = 2018 
+EXCEPT 
+SELECT pp.product_id, pp.product_name
+FROM product.product pp, sale.order_item soi, sale.orders so 
+WHERE pp.product_id = soi.product_id 
+    AND soi.order_id = so.order_id 
+    AND YEAR(so.order_date) = 2020 
+; 
+
+--2nd Solution 
+SELECT pp.product_id, pp.product_name
+FROM product.product pp, sale.order_item soi, sale.orders so 
+WHERE pp.product_id = soi.product_id 
+    AND soi.order_id = so.order_id 
+    AND YEAR(so.order_date) = 2019 
+EXCEPT 
+SELECT pp.product_id, pp.product_name
+FROM product.product pp, sale.order_item soi, sale.orders so 
+WHERE pp.product_id = soi.product_id 
+    AND soi.order_id = so.order_id 
+    AND YEAR(so.order_date) <> 2019 
+    ; 
+
+
+--CASE 
+
+--
+SELECT order_id, order_status, 
+    CASE order_status 
+            WHEN 1 THEN 'Pending'
+            WHEN 2 THEN 'Processing'
+            WHEN 3 THEN 'Rejected'
+            WHEN 4 THEN 'Completed'
+    END AS order_status_desc
+FROM sale.orders
+; 
+--
+SELECT *,
+    CASE 
+        WHEN shipped_date = order_date then 'Fast'
+        WHEN DATEDIFF(day, order_date, shipped_date) <  3  
+            AND DATEDIFF(day, order_date, shipped_date) > 0 then 'Normal'
+        WHEN DATEDIFF(day, order_date, shipped_date) >=  3  then 'Slow'
+        ELSE 'Not Shipped'
+    END AS ORDER_LABEL
+FROM sale.orders 
+ORDER BY shipped_date
+;
+
+SELECT shipped_date
+FROM sale.orders 
+ORDER BY 1 ASC 
+
+--------------
+--SUBQUERY
+
+--Q1
+--Write a query that returns the total list price by each order ids
+SELECT soi.order_id, 
+    (SELECT SUM(list_price) 
+    FROM sale.order_item 
+    WHERE order_id = soi.order_id
+    ) total_price
+FROM sale.order_item soi 
+GROUP BY soi.order_id
+
+--Q2
+--Bring all the staff from the store that Davis Thomas works 
+
+SELECT *
+FROM sale.staff 
+WHERE store_id IN (
+SELECT store_id 
+FROM sale.staff 
+WHERE first_name = 'Davis' AND last_name = 'Thomas'
+)
+
+
+-- 
+SELECT *
+FROM sale.staff 
+WHERE store_id IN (
+SELECT store_id
+FROM sale.store
+WHERE store_name = 'Burkes Outlet'
+)
+
+SELECT store_name 
+FROM sale.store
+--
+SELECT *, st.store_name
+FROM sale.staff ss, sale.store st
+WHERE ss.store_id =  st.store_id
+    AND ss.store_id 
+    IN (
+        SELECT store_id 
+        FROM sale.staff 
+        WHERE first_name = 'Davis' AND last_name = 'Thomas'
+        ) 
+--Q3
+--List the staff that Charles Cussona is the manager of
+SELECT *
+FROM sale.staff 
+WHERE manager_id =
+        (
+        SELECT staff_id
+        FROM sale.staff 
+        WHERE first_name = 'Charles' 
+            AND last_name = 'Cussona'
+            )
+
+--Q4  
+--Write a query that returns customers in the city 
+--where 'The BFLO Store' is located
+
+SELECT *
+FROM sale.customer 
+WHERE city IN  
+    (
+        SELECT city 
+        FROM sale.store 
+        WHERE store_name = 'The BFLO Store'
+    )
+;
+
+--Q5 
+--List prodcuts that are more expensive than 
+--Pro-Series 49-Class Full HD Outdoor LED TV (Silver)
+SELECT *
+FROM product.product
+WHERE list_price > 
+(
+        SELECT list_price 
+        FROM product.product 
+        WHERE product_name = 
+                'Pro-Series 49-Class Full HD Outdoor LED TV (Silver)'
+
+)
+
+--Q6 
+--List customers whose order dates are before than Hassan Pope.
+
+SELECT *
+FROM sale.customer sc, sale.orders so
+WHERE sc.customer_id = so.customer_id
+    AND so.order_date < 
+    (
+        SELECT order_date 
+        FROM sale.orders so, sale.customer sc 
+        WHERE so.customer_id = sc.customer_id 
+            AND sc.first_name = 'Hassan' 
+            AND sc.last_name = 'Pope'
+    ) 
+;
+---Multiple-row Subqueries
+--Q7
+--List all customers who orders on the same dates as Laurel Goldammer 
+
+SELECT *
+FROM sale.customer sc, sale.orders so 
+WHERE sc.customer_id = so.customer_id 
+    AND so.order_date IN (
+        SELECT so.order_date
+        FROM sale.customer sc, sale.orders so 
+        WHERE sc.customer_id = so.customer_id 
+            AND sc.first_name = 'Laurel' AND sc.last_name = 'Goldammer'
+    )
+
+
+--Q8
+--List products made in 2021 and their categories other than 
+--Game, gps, or Home Theater 
+
+SELECT pp.product_name, pc.category_name
+FROM product.product pp, product.category pc 
+WHERE pp.category_id = pc.category_id 
+ AND pp.product_name IN 
+        (SELECT pp.product_name
+         FROM product.product pp, product.category pc 
+         WHERE pp.category_id = pc.category_id 
+    AND pc.category_name NOT IN ('Game', 'gps', 'Home Theater')
+        ) 
+ AND pp.model_year = 2021
+;
+
+--Q9
+--List products made in 2020 and its prices more than 
+--all products in the Receivers Amplifiers category 
+
+SELECT product_name, model_year, list_price
+FROM product.product 
+WHERE list_price > 
+    (
+        SELECT  MAX(pp.list_price) 
+        FROM product.product pp, product.category pc 
+        WHERE pp.category_id = pc.category_id
+        AND pc.category_name = 'Receivers Amplifiers'
+    )
+    AND model_year = 2020
+ORDER BY 3 DESC
+;
+--2 nd Solution (w/ ALL)
+SELECT * 
+FROM	product.product
+WHERE	model_year = 2020 and
+		list_price > ALL (
+			SELECT	B.list_price
+			FROM	product.category A, product.product B
+			WHERE	A.category_name = 'Receivers Amplifiers' and
+					A.category_id = B.category_id
+			) 
+
+--Correlated Subqueries           
+
+--Q10
+--
+SELECT DISTINCT sc2.state
+FROM sale.customer sc2
+WHERE NOT EXISTS (SELECT DISTINCT sc.state
+        FROM product.product pp, sale.order_item soi,
+                sale.orders so, sale.customer sc 
+        WHERE pp.product_id = soi.product_id 
+            AND soi.order_id = so.order_id 
+            AND so.customer_id = sc.customer_id 
+            AND pp.product_name = 'Apple - Pre-Owned iPad 3 - 32GB - White'
+            AND sc2.[state] = sc.[state]
+)
+
+--Q11
+SELECT DISTINCT sc2.customer_id, sc2.first_name, sc2.last_name
+FROM sale.customer sc2
+WHERE NOT EXISTS
+(
+        SELECT DISTINCT *
+        FROM sale.customer sc, sale.orders so 
+        WHERE sc.customer_id = so.customer_id 
+            AND sc2.customer_id = sc.customer_id
+            AND so.order_date < '2020-01-01'
+)
+
+SELECT DISTINCT *
+FROM sale.customer sc, sale.orders so 
+WHERE sc.customer_id = so.customer_id 
+    AND sc2.customer_id = sc.customer_id
+    AND so.order_date < '2020-01-01'
+
+--Q12
+--List customers who have ---- named Jerald Berray 
+SELECT *
+FROM sale.customer sc, sale.orders so 
+WHERE sc.customer_id = so.customer_id 
+    AND so.order_date < 
+    (
+        SELECT MAX(so.order_date)
+        FROM sale.customer sc, sale.orders so 
+        WHERE sc.customer_id = so.customer_id
+        AND sc.first_name = 'Jerald' AND sc.last_name = 'Berray'
+    )
+    AND sc.city = 'Austin'
+
+
+--2nd Solution
+WITH TBL AS 
+    (
+        SELECT MAX(so.order_date) max_order_date
+        FROM sale.customer sc, sale.orders so 
+        WHERE sc.customer_id = so.customer_id
+        AND sc.first_name = 'Jerald' AND sc.last_name = 'Berray'
+    )   
+
+SELECT *
+FROM sale.customer sc, sale.orders so, TBL t
+WHERE sc.customer_id = so.customer_id 
+
+    AND so.order_date < t.max_order_date 
+    AND sc.city = 'Austin' 
+
+--
+--Create a table with a number in each row 
+--in ascending order from 0 to 9
+WITH TBL AS 
+
+    (SELECT 2+3 AS n 
+    UNION ALL
+    SELECT n+1 
+    FROM TBL
+    WHERE n<10
+    ) 
+SELECT n 
+FROM TBL 
+
+--Write a query that returns all staff with their manager ids 
+
+WITH TBL AS 
+    (SELECT staff_id, first_name, manager_id 
+    FROM sale.staff
+    WHERE staff_id = 1
+    UNION ALL
+    SELECT A.staff_id, A.first_name, A.manager_id
+    FROM sale.staff A, TBL B 
+    WHERE A.manager_id = B.staff_id 
+    ) 
+SELECT *
+FROM TBL
+
