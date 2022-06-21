@@ -342,7 +342,7 @@ SELECT shipped_date
 FROM sale.orders 
 ORDER BY 1 ASC 
 
---------------
+--------------------------------------------------------------------------------------------------------
 --SUBQUERY
 
 --Q1
@@ -594,3 +594,117 @@ WITH TBL AS
 SELECT *
 FROM TBL
 
+--------------------------------------------------------------------------------------------------------
+--WINDOW FUNCTIONS 
+
+--Q1
+--Write a query that returns stock amounts of products (only stock table)
+--GROUP BY
+SELECT product_id, SUM(quantity) total_stock
+FROM product.stock 
+GROUP BY product_id 
+ORDER BY product_id 
+;
+--WF 
+
+SELECT product_id, 
+SUM(quantity) OVER(PARTITION BY product_id)  total_stock 
+FROM product.stock 
+;
+
+
+--Q2
+--Write a query that returns avg list price of products by brands 
+--GROUP BY 
+SELECT brand_id, AVG(list_price) avg_price
+FROM product.product 
+GROUP BY brand_id 
+;
+
+--WF
+SELECT DISTINCT brand_id, 
+    AVG(list_price) OVER (PARTITION BY brand_id) avg_price
+FROM product.product 
+; 
+
+--Q3 
+--What is the cheapest product price in each category?
+
+SELECT DISTINCT category_id, 
+    MIN(list_price) OVER (PARTITION BY category_id) cheapest_by_cat
+FROM product.product 
+; 
+
+--Q4
+--How many different product in the product table?
+
+SELECT DISTINCT COUNT(*) OVER () num_of_product 
+FROM product.product 
+
+--2nd Solution
+SELECT COUNT(*) num_of_product 
+FROM product.product
+
+--Q5
+--How many different product in the order_item table? 
+
+SELECT COUNT(DISTINCT product_id)  num_of_product 
+FROM sale.order_item 
+; 
+
+--Q5
+--Write a query that returns how many products are in each order?
+
+SELECT DISTINCT order_id,
+        COUNT(*) OVER (PARTITION BY order_id) cnt_product,
+        SUM(quantity) OVER (PARTITION BY order_id) total_product
+FROM sale.order_item 
+;
+
+--Q6
+--How many different prodcut are in each brand in each category? 
+SELECT DISTINCT category_id, brand_id,
+        COUNT(product_id) OVER (PARTITION BY category_id, brand_id) NumOfProduct
+FROM product.product 
+; 
+
+--Q7 
+--Writea query that returns most stocked product in each store.
+
+--FIRST_VALUE
+SELECT DISTINCT store_id, 
+    FIRST_VALUE(product_id) OVER (PARTITION BY store_id  ORDER BY  quantity DESC)
+FROM product.stock
+; 
+
+--2nd Solution
+SELECT DISTINCT store_id, product_id, MAX(quantity) MostStockedProduct
+FROM product.stock 
+GROUP BY store_id, product_id 
+ORDER BY 3 DESC 
+
+--Q8
+--most valuable 
+
+    SELECT DISTINCT so.customer_id, soi.order_id, 
+        SUM((soi.list_price*soi.quantity)*(1-soi.discount))
+        OVER (PARTITION BY soi.order_id, so.customer_id) MVOrder
+    INTO #TBL2
+    FROM sale.order_item soi, sale.orders so 
+    WHERE soi.order_id = so.order_id 
+    
+   
+
+SELECT DISTINCT customer_id,
+    FIRST_VALUE(order_id) OVER (PARTITION BY customer_id ORDER BY MVorder DESC) MVorder_id,
+    FIRST_VALUE(MVOrder) OVER (PARTITION BY customer_id ORDER BY MVorder DESC) MVorderAmount
+FROM #TBL2 
+
+--Q9
+--first order date by month 
+
+SELECT DISTINCT YEAR(order_date) Year,
+        MONTH(order_date) Month,
+        FIRST_VALUE(order_date) 
+        OVER (PARTITION BY MONTH(order_date), YEAR(order_date) ORDER BY order_date) FOD
+FROM sale.orders 
